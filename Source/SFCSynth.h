@@ -42,6 +42,7 @@ private:
    {
       Off,
       Attack,
+      Decay,
       Sustain,
       Release
    };
@@ -50,11 +51,11 @@ private:
    {
       Stage stage{ Stage::Off };
       int pitch{ -1 };
-      float velocity{ 0 };
-      float phase{ 0 };
-      float phaseInc{ 0 };
-      float env{ 0 };
-      float releaseStart{ 0 };
+      float velocity{ 0.0f };
+      float phase{ 0.0f };
+      float phaseInc{ 0.0f };
+      float env{ 0.0f };
+      float releaseStart{ 0.0f };
       uint64_t age{ 0 };
    };
 
@@ -63,8 +64,11 @@ private:
 
    void StartVoice(const NoteMessage& note);
    void ReleaseVoice(int pitch);
+   Voice* SelectVoiceForNote();
    float RenderVoice(Voice& voice);
    void BuildWaveTable();
+   int CountVoices(Stage stage) const;
+   const char* StageLabel(Stage stage) const;
 
    static constexpr int kNumVoices = 8;
    static constexpr int kWaveTableSize = 32;
@@ -72,17 +76,31 @@ private:
    std::array<Voice, kNumVoices> mVoices;
    std::array<float, kWaveTableSize> mWaveTable{};
 
-   float mVolume{ 0.7f };
+   // SFC-like first-pass controls.
+   float mVolume{ 0.70f };
    float mAttackMs{ 2.0f };
-   float mReleaseMs{ 90.0f };
+   float mDecayMs{ 90.0f };
+   float mSustain{ 0.72f };
+   float mReleaseMs{ 110.0f };
    float mTone{ 0.65f };
+   float mBitDepth{ 8.0f };
+   float mRateDivide{ 1.0f };
 
    FloatSlider* mVolumeSlider{ nullptr };
    FloatSlider* mAttackSlider{ nullptr };
+   FloatSlider* mDecaySlider{ nullptr };
+   FloatSlider* mSustainSlider{ nullptr };
    FloatSlider* mReleaseSlider{ nullptr };
    FloatSlider* mToneSlider{ nullptr };
+   FloatSlider* mBitDepthSlider{ nullptr };
+   FloatSlider* mRateDivideSlider{ nullptr };
 
    float* mWriteBuffer{ nullptr };
    bool mEnabled{ true };
    uint64_t mVoiceAgeCounter{ 0 };
+   uint64_t mVoiceStealCounter{ 0 };
+
+   // Output sample-and-hold for crude lower internal rate character.
+   int mRateCounter{ 0 };
+   float mHeldSample{ 0.0f };
 };

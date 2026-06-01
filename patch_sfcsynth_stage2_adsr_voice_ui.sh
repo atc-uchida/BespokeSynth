@@ -1,3 +1,145 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Stage 2 patch for SFCBespoke:
+#   - Replace the initial SFCSynth MVP with a slightly more SFC-oriented voice engine.
+#   - Add ADSR UI controls: vol/atk/dec/sus/rel/tone/bits/rate.
+#   - Add explicit 8-voice allocation/stealing bookkeeping.
+#   - Add basic bit-depth and sample-rate reduction.
+#
+# Usage:
+#   cd /path/to/BespokeSynth
+#   bash patch_sfcsynth_stage2_adsr_voice_ui.sh
+
+ROOT="${1:-$(pwd)}"
+cd "$ROOT"
+
+H="Source/SFCSynth.h"
+CPP="Source/SFCSynth.cpp"
+
+if [[ ! -f "$H" || ! -f "$CPP" ]]; then
+  echo "ERROR: Source/SFCSynth.h / Source/SFCSynth.cpp が見つかりません。" >&2
+  echo "Stage 1 の SFCSynth 追加が済んでいるか確認してください。" >&2
+  exit 1
+fi
+
+TS="$(date +%Y%m%d%H%M%S)"
+cp "$H" "$H.bak.$TS"
+cp "$CPP" "$CPP.bak.$TS"
+echo "Backup:"
+echo "  $H.bak.$TS"
+echo "  $CPP.bak.$TS"
+
+cat > "$H" <<'EOF_H'
+#pragma once
+
+#include "IAudioSource.h"
+#include "INoteReceiver.h"
+#include "IDrawableModule.h"
+#include "Slider.h"
+
+#include <array>
+#include <cstdint>
+
+class SFCSynth : public IAudioSource,
+                 public INoteReceiver,
+                 public IDrawableModule,
+                 public IFloatSliderListener
+{
+public:
+   SFCSynth();
+   ~SFCSynth() override;
+
+   static IDrawableModule* Create() { return new SFCSynth(); }
+   static bool AcceptsAudio() { return false; }
+   static bool AcceptsNotes() { return true; }
+   static bool AcceptsPulses() { return false; }
+
+   void CreateUIControls() override;
+
+   // IAudioSource
+   void Process(double time) override;
+
+   // INoteReceiver
+   void PlayNote(NoteMessage note) override;
+   void SendCC(int control, int value, int voiceIdx = -1) override {}
+
+   // IFloatSliderListener
+   void FloatSliderUpdated(FloatSlider* slider, float oldVal, double time) override {}
+
+   void SetEnabled(bool enabled) override { mEnabled = enabled; }
+   bool IsEnabled() const override { return mEnabled; }
+
+private:
+   enum class Stage
+   {
+      Off,
+      Attack,
+      Decay,
+      Sustain,
+      Release
+   };
+
+   struct Voice
+   {
+      Stage stage{ Stage::Off };
+      int pitch{ -1 };
+      float velocity{ 0.0f };
+      float phase{ 0.0f };
+      float phaseInc{ 0.0f };
+      float env{ 0.0f };
+      float releaseStart{ 0.0f };
+      uint64_t age{ 0 };
+   };
+
+   void DrawModule() override;
+   void GetModuleDimensions(float& width, float& height) override;
+
+   void StartVoice(const NoteMessage& note);
+   void ReleaseVoice(int pitch);
+   Voice* SelectVoiceForNote();
+   float RenderVoice(Voice& voice);
+   void BuildWaveTable();
+   int CountVoices(Stage stage) const;
+   const char* StageLabel(Stage stage) const;
+
+   static constexpr int kNumVoices = 8;
+   static constexpr int kWaveTableSize = 32;
+
+   std::array<Voice, kNumVoices> mVoices;
+   std::array<float, kWaveTableSize> mWaveTable{};
+
+   // SFC-like first-pass controls.
+   float mVolume{ 0.70f };
+   float mAttackMs{ 2.0f };
+   float mDecayMs{ 90.0f };
+   float mSustain{ 0.72f };
+   float mReleaseMs{ 110.0f };
+   float mTone{ 0.65f };
+   float mBitDepth{ 8.0f };
+   float mRateDivide{ 1.0f };
+
+   FloatSlider* mVolumeSlider{ nullptr };
+   FloatSlider* mAttackSlider{ nullptr };
+   FloatSlider* mDecaySlider{ nullptr };
+   FloatSlider* mSustainSlider{ nullptr };
+   FloatSlider* mReleaseSlider{ nullptr };
+   FloatSlider* mToneSlider{ nullptr };
+   FloatSlider* mBitDepthSlider{ nullptr };
+   FloatSlider* mRateDivideSlider{ nullptr };
+
+   float* mWriteBuffer{ nullptr };
+   bool mEnabled{ true };
+   uint64_t mVoiceAgeCounter{ 0 };
+   uint64_t mVoiceStealCounter{ 0 };
+
+   // Output sample-and-hold for crude lower internal rate character.
+   int mRateCounter{ 0 };
+   float mHeldSample{ 0.0f };
+};
+EOF_H
+
+cat > "$CPP" <<'EOF_CPP'
 #include "SFCSynth.h"
 
 #include "IAudioReceiver.h"
@@ -360,3 +502,36 @@ void SFCSynth::GetModuleDimensions(float& width, float& height)
    width = 210;
    height = 224;
 }
+EOF_CPP
+
+echo
+echo "Patched SFCSynth Stage 2."
+echo
+echo "Diff summary:"
+git diff -- Source/SFCSynth.h Source/SFCSynth.cpp || true
+
+cat <<'EOF_NEXT'
+
+次のコマンドで再ビルドしてください。
+
+rm -rf ignore/build
+
+cmake -Bignore/build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBESPOKE_SFC_DAW=ON \
+  -DBESPOKE_PORTABLE=OFF \
+  -DBESPOKE_PYTHON_ROOT=/opt/homebrew/opt/python@3.12/Frameworks/Python.framework/Versions/3.12 \
+  -DPython_ROOT_DIR=/opt/homebrew/opt/python@3.12/Frameworks/Python.framework/Versions/3.12 \
+  -DPython_EXECUTABLE=/opt/homebrew/opt/python@3.12/bin/python3.12
+
+cmake --build ignore/build --parallel 4 --config Release
+
+APP="$(pwd)/ignore/build/Source/BespokeSynth_artefacts/Release/SFCBespoke.app"
+BIN="$APP/Contents/MacOS/SFCBespoke"
+
+mkdir -p "$APP/Contents/Resources/resource"
+rsync -a resource/ "$APP/Contents/Resources/resource/"
+
+"$BIN"
+
+EOF_NEXT
