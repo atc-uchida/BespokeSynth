@@ -31,6 +31,7 @@ if(APPLE)
         # execute_process(COMMAND codesign --remove-signature "${binary}")
         execute_process(COMMAND ${CMAKE_INSTALL_NAME_TOOL} -change "${pySO}" "${newPySO}" "${binary}" COMMAND_ECHO STDOUT)
     endfunction()
+    file(MAKE_DIRECTORY "${bundleContents}/Resources")
     file(CREATE_LINK "${pyMajDotMin}" "${pyBulkInstallTo}/Current" SYMBOLIC)  # Make codesign happy
     file(CREATE_LINK "../Frameworks/${pyFWName}/Versions/${pyMajDotMin}" "${bundleContents}/Resources/python" SYMBOLIC)
     file(CREATE_LINK "python${pyMajDotMin}" "${pyDirDst}/bin/python" SYMBOLIC)

@@ -34,7 +34,6 @@
 using namespace juce::gl;
 using namespace juce;
 #include <VersionInfo.h>
-#include <iostream>
 
 #include "OpenFrameworksPort.h"
 #include "nanovg/nanovg.h"
@@ -131,48 +130,11 @@ std::string ofToFactoryPath(const std::string& subdir)
 
 std::string ofToResourcePath(const std::string& path)
 {
-   // SFCBespoke patch: robust resource lookup for local development builds.
-   //
-   // Original Bespoke expects bundled resources at:
-   //   <App>.app/Contents/Resources/resource/<file>
-   //
-   // During fork/development builds, the bundle path can vary and direct
-   // execution from Terminal is common, so also allow resources to be loaded
-   // from the repository working directory.
    if (!path.empty() && (path[0] == '.' || juce::File::isAbsolutePath(path)))
       return path;
 
-   auto cwdResource = juce::File::getCurrentWorkingDirectory().getChildFile("resource").getChildFile(path);
-   if (cwdResource.existsAsFile())
-      return cwdResource.getFullPathName().toStdString();
-
-   auto cwdResources = juce::File::getCurrentWorkingDirectory().getChildFile("resources").getChildFile(path);
-   if (cwdResources.existsAsFile())
-      return cwdResources.getFullPathName().toStdString();
-
-#if BESPOKE_MAC
-   auto bundleResource = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentApplicationFile)
-                            .getChildFile("Contents/Resources/resource")
-                            .getChildFile(path);
-   if (bundleResource.existsAsFile())
-      return bundleResource.getFullPathName().toStdString();
-#endif
-
-   auto exeSiblingResource = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile)
-                                .getSiblingFile("resource")
-                                .getChildFile(path);
-   if (exeSiblingResource.existsAsFile())
-      return exeSiblingResource.getFullPathName().toStdString();
-
-   try
-   {
-      static const auto sResourceDir = ofToFactoryPath("resource") + '/';
-      return sResourceDir + path;
-   }
-   catch (...)
-   {
-      return cwdResource.getFullPathName().toStdString();
-   }
+   static const auto sResourceDir = ofToFactoryPath("resource") + '/';
+   return sResourceDir + path;
 }
 
 struct StyleStack
@@ -819,91 +781,25 @@ ofColor ofColor::operator+(const ofColor& other)
 
 void RetinaTrueTypeFont::LoadFont(std::string path)
 {
-   // SFCBespoke patch: robust font lookup for local development builds.
-   //
-   // The original implementation only checked ofToDataPath(path), and then
-   // passed the original path to nvgCreateFont(). That makes startup fragile
-   // when running directly from a build tree or when the app bundle name/path
-   // has been changed.
-   mLoaded = false;
-   mFontHandle = -1;
-   mFontBoundsHandle = -1;
-
-   juce::File inputFile(path);
-   const auto fileName = inputFile.getFileName();
-
-   std::vector<juce::File> candidates;
-
-   if (path.empty())
-      return;
-
-   candidates.push_back(inputFile);
-
-   if (!juce::File::isAbsolutePath(path))
+   mFontPath = ofToDataPath(path);
+   File file(mFontPath.c_str());
+   if (file.existsAsFile())
    {
-      candidates.push_back(juce::File(ofToDataPath(path)));
-      candidates.push_back(juce::File(ofToResourcePath(path)));
-   }
-
-   candidates.push_back(juce::File::getCurrentWorkingDirectory().getChildFile("resource").getChildFile(fileName));
-   candidates.push_back(juce::File::getCurrentWorkingDirectory().getChildFile("resources").getChildFile(fileName));
-
-#if BESPOKE_MAC
-   auto appFile = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentApplicationFile);
-   candidates.push_back(appFile.getChildFile("Contents/Resources").getChildFile(fileName));
-   candidates.push_back(appFile.getChildFile("Contents/Resources/resource").getChildFile(fileName));
-   candidates.push_back(appFile.getChildFile("Contents/Resources/resources").getChildFile(fileName));
-#endif
-
-   auto exeFile = juce::File::getSpecialLocation(juce::File::SpecialLocationType::currentExecutableFile);
-   candidates.push_back(exeFile.getSiblingFile(fileName));
-   candidates.push_back(exeFile.getSiblingFile("resource").getChildFile(fileName));
-   candidates.push_back(exeFile.getSiblingFile("resources").getChildFile(fileName));
-
-   juce::File selected;
-
-   for (const auto& candidate : candidates)
-   {
-      if (candidate.existsAsFile())
+      for (int i = 0; i < (int)NanoVGRenderContext::Num; ++i) // load font in each render context
       {
-         selected = candidate;
-         break;
-      }
-   }
-
-   if (!selected.existsAsFile())
-   {
-      mFontPath = candidates.empty() ? path : candidates.front().getFullPathName().toStdString();
-
-      std::cerr << "SFCBespoke font lookup failed for: " << path << std::endl;
-      for (const auto& candidate : candidates)
-         std::cerr << "  tried: " << candidate.getFullPathName().toStdString() << std::endl;
-
-      return;
-   }
-
-   mFontPath = selected.getFullPathName().toStdString();
-   const auto fontName = selected.getFileName().toStdString();
-
-   std::cerr << "SFCBespoke loading font: " << mFontPath << std::endl;
-
-   bool loadedMainFont = false;
-
-   for (int i = 0; i < (int)NanoVGRenderContext::Num; ++i) // load font in each render context
-   {
-      int fontHandle = nvgCreateFont(gNanoVGRenderContexts[i], fontName.c_str(), mFontPath.c_str());
-
-      if (i == (int)NanoVGRenderContext::Main)
-      {
-         mFontHandle = fontHandle;
-         loadedMainFont = fontHandle >= 0;
+         int fontHandle = nvgCreateFont(gNanoVGRenderContexts[i], path.c_str(), path.c_str());
+         if (i == (int)NanoVGRenderContext::Main)
+            mFontHandle = fontHandle;
+         if (i == (int)NanoVGRenderContext::FontBounds)
+            mFontBoundsHandle = fontHandle;
       }
 
-      if (i == (int)NanoVGRenderContext::FontBounds)
-         mFontBoundsHandle = fontHandle;
+      mLoaded = true;
    }
-
-   mLoaded = loadedMainFont;
+   else
+   {
+      mLoaded = false;
+   }
 }
 
 void RetinaTrueTypeFont::DrawString(std::string str, float size, float x, float y)

@@ -18,6 +18,15 @@ option(BESPOKE_SYSTEM_TUNING_LIBRARY "Use system installation of tuning-library"
 option(BESPOKE_SYSTEM_ABLETONLINK "Use system installation of abletonlink" OFF)
 option(BESPOKE_SYSTEM_READERWRITERQUEUE "Use system installation of readerwriterqueue" OFF)
 option(BESPOKE_USE_ASAN "Build with ASAN" OFF)
+option(BESPOKE_SFC_DAW "Build the SFC-focused Bespoke fork" OFF)
+set(BESPOKE_APP_NAME "BespokeSynth" CACHE STRING "Application display name")
+set(BESPOKE_BUNDLE_ID "com.ryanchallinor.bespokesynth" CACHE STRING "Application bundle identifier")
+set(BESPOKE_ICON "${CMAKE_SOURCE_DIR}/bespoke_icon.png" CACHE STRING "Application icon path")
+if(BESPOKE_SFC_DAW)
+    set(BESPOKE_APP_NAME "SFCBespoke" CACHE STRING "Application display name" FORCE)
+    set(BESPOKE_BUNDLE_ID "com.pepsico4646.sfcbespoke" CACHE STRING "Application bundle identifier" FORCE)
+    set(BESPOKE_ICON "${CMAKE_SOURCE_DIR}/sfcbespoke_icon.png" CACHE STRING "Application icon path" FORCE)
+endif()
 
 # Global CMake options
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # clangd/LSP support

@@ -217,32 +217,6 @@ public:
       mSynth.LoadResources();
       Push2Control::CreateStaticFramebuffer();
 
-      juce::MessageManager::callAsync([this]
-      {
-         if (mDidMainThreadInitialise)
-            return;
-
-         mDidMainThreadInitialise = true;
-         initialiseOnMessageThread();
-      });
-   }
-
-   void initialiseOnMessageThread()
-   {
-      if (!juce::MessageManager::getInstance()->isThisTheMessageThread())
-      {
-         juce::MessageManager::callAsync([this]
-         {
-            if (!mDidMainThreadInitialise)
-            {
-               mDidMainThreadInitialise = true;
-               initialiseOnMessageThread();
-            }
-         });
-         return;
-      }
-
-
       /*for (auto deviceType : mGlobalManagers.mDeviceManager.getAvailableDeviceTypes())
       {
          ofLog() << "inputs:";
@@ -343,7 +317,6 @@ public:
 
       UserPrefs.LastTargetFramerate = UserPrefs.target_framerate.Get();
       startTimerHz(UserPrefs.target_framerate.Get());
-   
    }
 
    std::string GetInputDeviceName() const
@@ -431,9 +404,6 @@ public:
 
    void render() override
    {
-      if (!mDidMainThreadInitialise)
-         return;
-
       if (mSynth.IsLoadingState())
          return;
 
@@ -689,7 +659,6 @@ private:
       CheckForDisconnection,
       Disconnected
    };
-   bool mDidMainThreadInitialise{ false };
    AudioDeviceConnectionState mAudioDeviceConnectionState{ AudioDeviceConnectionState::None };
 
    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainContentComponent)

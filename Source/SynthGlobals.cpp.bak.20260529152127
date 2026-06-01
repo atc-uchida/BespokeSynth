@@ -851,34 +851,17 @@ float GetRightPanGain(float pan)
 
 void DrawFallbackText(const char* text, float posX, float posY)
 {
-   // SFCBespoke patch: keep fallback font renderer ASCII-safe.
-   //
-   // sSimplexFont only covers printable ASCII. When the fallback error text
-   // contains UTF-8 bytes, e.g. Japanese path names, indexing with ch - 32 can
-   // go out of range and crash before the real error message is visible.
-   if (text == nullptr)
-      return;
-
    float scale = .5f;
    ofVec2f pen;
    pen.set(posX, posY);
 
-   for (const unsigned char* c = reinterpret_cast<const unsigned char*>(text); *c; ++c)
+   for (const auto* c = text; *c; ++c)
    {
-      const unsigned char ch = *c;
+      const auto ch = *c;
 
       if (ch == '\n')
       {
          pen.set(posX, pen.y + scale * 60);
-         continue;
-      }
-
-      if (ch < 32 || ch > 126)
-      {
-         // Skip non-printable/UTF-8 continuation bytes safely.
-         // Advance slightly so long paths/messages still remain readable enough
-         // once ASCII portions resume.
-         pen += ofVec2f(20 * scale, 0);
          continue;
       }
 

@@ -354,7 +354,11 @@ public:
    UserPrefString recordings_path{ "recordings_path", "recordings/", 70, UserPrefCategory::Paths };
    UserPrefString samples_path{ "samples_path", "samples/", 70, UserPrefCategory::Paths };
    UserPrefString tooltips{ "tooltips", "tooltips_eng.txt", 70, UserPrefCategory::Paths };
+#if BESPOKE_SFC_DAW
+   UserPrefString layout{ "layout", "layouts/sfc_default.json", 70, UserPrefCategory::Paths };
+#else
    UserPrefString layout{ "layout", "layouts/blank.json", 70, UserPrefCategory::Paths };
+#endif
    UserPrefString youtube_dl_path{ "youtube_dl_path", kDefaultYoutubeDlPath, 70, UserPrefCategory::Paths };
    UserPrefString ffmpeg_path{ "ffmpeg_path", kDefaultFfmpegPath, 70, UserPrefCategory::Paths };
 };

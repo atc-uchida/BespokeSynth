@@ -97,10 +97,10 @@ public:
          return;
       }
 
-      mainWindow = std::make_unique<MainWindow>("bespoke synth");
+      mainWindow = std::make_unique<MainWindow>(Bespoke::APP_NAME);
 
       juce::PropertiesFile::Options options;
-      options.applicationName = "Bespoke Synth";
+      options.applicationName = Bespoke::APP_NAME;
       options.filenameSuffix = "settings";
       options.osxLibrarySubFolder = "Preferences";
 

@@ -2688,7 +2688,7 @@ void ModularSynth::ClearCircularDependencyMarkers()
 
 void ModularSynth::ResetLayout()
 {
-   mMainComponent->getTopLevelComponent()->setName("bespoke synth");
+   //mMainComponent->getTopLevelComponent()->setName("bespoke synth");
    mCurrentSaveStatePath = "";
 
    mModuleContainer.Clear();
@@ -3256,7 +3256,7 @@ void ModularSynth::CompleteQueuedSaveState()
    {
       mCurrentSaveStatePath = file;
       std::string filename = File(mCurrentSaveStatePath).getFileName().toStdString();
-      mMainComponent->getTopLevelComponent()->setName("bespoke synth - " + filename);
+      //mMainComponent->getTopLevelComponent()->setName("bespoke synth - " + filename);
       TheTitleBar->DisplayTemporaryMessage("saved " + filename);
    }
 
@@ -3394,7 +3394,7 @@ void ModularSynth::LoadState(std::string file)
    mCurrentSaveStatePath = file;
    File savePath(mCurrentSaveStatePath);
    std::string filename = savePath.getFileName().toStdString();
-   mMainComponent->getTopLevelComponent()->setName("bespoke synth - " + filename);
+   //mMainComponent->getTopLevelComponent()->setName("bespoke synth - " + filename);
 
    mAudioThreadMutex.Lock("LoadState()");
    LockRender(true);

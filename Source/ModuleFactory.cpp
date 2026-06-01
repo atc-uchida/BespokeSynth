@@ -93,6 +93,7 @@
 //#include "MidiPlayer.h"
 #include "SamplerGrid.h"
 #include "SignalGenerator.h"
+#include "SFCSynth.h"
 #include "Lissajous.h"
 #include "DebugAudioSource.h"
 #include "TimerDisplay.h"
@@ -293,6 +294,28 @@
 
 ModuleFactory::ModuleFactory()
 {
+#if BESPOKE_SFC_DAW
+   REGISTER(NoteCanvas, notecanvas, kModuleCategory_Instrument);
+   REGISTER(NoteStepSequencer, notesequencer, kModuleCategory_Instrument);
+   REGISTER(StepSequencer, drumsequencer, kModuleCategory_Instrument);
+   REGISTER(SFCSynth, sfcsynth, kModuleCategory_Synth);
+   REGISTER(Sampler, sampler, kModuleCategory_Synth);
+   REGISTER(SamplePlayer, sampleplayer, kModuleCategory_Synth);
+   REGISTER(Amplifier, gain, kModuleCategory_Audio);
+   REGISTER(Panner, panner, kModuleCategory_Audio);
+   REGISTER(Splitter, splitter, kModuleCategory_Audio);
+   REGISTER(MultitapDelay, multitapdelay, kModuleCategory_Audio);
+   REGISTER(EQModule, eq, kModuleCategory_Audio);
+   REGISTER(AudioMeter, audiometer, kModuleCategory_Audio);
+   REGISTER(InputChannel, input, kModuleCategory_Audio);
+   REGISTER(OutputChannel, output, kModuleCategory_Audio);
+   REGISTER(CommentDisplay, comment, kModuleCategory_Other);
+   REGISTER(LabelDisplay, label, kModuleCategory_Other);
+   REGISTER(Metronome, metronome, kModuleCategory_Synth);
+   REGISTER(TapTempo, taptempo, kModuleCategory_Other);
+   return;
+#endif
+
    REGISTER(LooperRecorder, looperrecorder, kModuleCategory_Audio);
    REGISTER(WaveformViewer, waveformviewer, kModuleCategory_Audio);
    REGISTER(EffectChain, effectchain, kModuleCategory_Audio);

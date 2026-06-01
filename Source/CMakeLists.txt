@@ -7,15 +7,15 @@ else()
 endif()
 
 juce_add_gui_app(BespokeSynth
-    PRODUCT_NAME BespokeSynth
-    ICON_BIG ${CMAKE_SOURCE_DIR}/bespoke_icon.png
+    PRODUCT_NAME ${BESPOKE_APP_NAME}
+    ICON_BIG ${BESPOKE_ICON}
     MICROPHONE_PERMISSION_ENABLED TRUE
     CAMERA_PERMISSION_ENABLED     TRUE
     BLUETOOTH_PERMISSION_ENABLED  TRUE
     FILE_SHARING_ENABLED          TRUE
     DOCUMENT_BROWSER_ENABLED      TRUE
     DOCUMENT_EXTENSIONS           .bsk
-    BUNDLE_ID                     com.ryanchallinor.bespokesynth
+    BUNDLE_ID                     ${BESPOKE_BUNDLE_ID}
     PLUGINHOST_AU                 TRUE
     )
 
@@ -32,6 +32,16 @@ else()
     if(BESPOKE_WERROR)
         target_compile_options(BespokeSynth PRIVATE -Werror)
     endif()
+endif()
+
+if(APPLE)
+    add_custom_command(TARGET BespokeSynth POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:BespokeSynth>/Contents/Resources"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/resource"
+            "$<TARGET_BUNDLE_DIR:BespokeSynth>/Contents/Resources"
+        COMMENT "Copying Bespoke resources into app bundle"
+    )
 endif()
 
 target_sources(BespokeSynth PRIVATE
@@ -673,6 +683,8 @@ target_sources(BespokeSynth PRIVATE
     SignalClamp.h
     SignalGenerator.cpp
     SignalGenerator.h
+    SFCSynth.cpp
+    SFCSynth.h
     SimplexFont.h
     SingleOscillator.cpp
     SingleOscillator.h
@@ -810,6 +822,10 @@ if(BESPOKE_PORTABLE)
         )
 endif()
 
+if(BESPOKE_SFC_DAW)
+    target_compile_definitions(BespokeSynth PRIVATE BESPOKE_SFC_DAW=1)
+endif()
+
 target_include_directories(BespokeSynth PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${Python_INCLUDE_DIRS}
@@ -832,7 +848,7 @@ target_compile_definitions(BespokeSynth PRIVATE
 
     JUCE_ALSA=1
     JUCE_JACK=1
-    JUCE_JACK_CLIENT_NAME="BespokeSynth"
+    JUCE_JACK_CLIENT_NAME="${BESPOKE_APP_NAME}"
 
     JUCE_WASAPI=1
     JUCE_DIRECTSOUND=1
